@@ -1254,6 +1254,12 @@ ul.menu{background:rgba(16,34,40,.97)!important;-webkit-backdrop-filter:blur(22p
 .fword span{font-size:12px;color:var(--mat-ink);white-space:nowrap}
 .fword input{flex:1;min-width:0;background:none;border:0;color:#f8f4ea;font:500 16px/1 "Abril Fatface",var(--f-num),serif;letter-spacing:.12em;text-transform:uppercase;outline:none;padding:0 8px}
 .fword:focus-within{border-color:rgba(244,240,230,.5)}
+
+/* cutter: the knife layer sits over the sheet, the panels stay usable */
+#knife{position:absolute;inset:0;width:100%;height:100%;z-index:30;display:none;touch-action:none;cursor:crosshair}
+#studio.cutting #knife{display:block}
+#studio.cutting .rail,#studio.cutting .dock,#studio.cutting .mbar,#studio.cutting .zoom,#studio.cutting .top,#studio.cutting #btn-pin{z-index:40}
+#rail-knife[aria-pressed=true]{background:#f4f0e6;color:#1d3a3f}
 [hidden]{display:none!important}
 </style>
 <script src="js/vercel-queues.js"></script>
@@ -1356,6 +1362,7 @@ ul.menu{background:rgba(16,34,40,.97)!important;-webkit-backdrop-filter:blur(22p
         <button class="ib sel-only" data-a="rot" aria-label="Rotate 90°" data-tip="rotate 90°"><svg class="i"><use href="#i-rotate"/></svg></button>
         <button class="ib sel-only" data-a="flip" aria-label="Mirror" data-tip="mirror"><svg class="i"><use href="#i-flip"/></svg></button>
         <button class="ib sel-only" data-a="lock" id="rail-lock" aria-label="Lock" data-tip="lock · ⇧⌘L" aria-pressed="false"><svg class="i"><use href="#i-unlock"/></svg></button>
+        <button class="ib sel-only" id="rail-knife" aria-label="Cutter" data-tip="cutter · K" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M3 21l9.5-9.5"/><path d="M12.5 11.5l6.3-6.3a1.6 1.6 0 0 1 2.3 2.3l-6.3 6.3z"/><path d="M14.8 9.2l1.6 1.6"/></svg></button>
         <button class="ib sel-only" data-a="del" aria-label="Remove" data-tip="remove"><svg class="i"><use href="#i-trash"/></svg></button>
         <button class="ib sel-only m-only" id="m-fx" aria-label="Effects"><svg class="i"><use href="#i-fx"/></svg></button>
         <button class="ib m-only m-done" id="m-done" aria-label="Done"><svg class="i"><use href="#i-check"/></svg></button>

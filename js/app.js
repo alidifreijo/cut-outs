@@ -868,13 +868,16 @@ async function refresh(p){
   if(p.kind==="text")base=await renderText(p.t);
   else{const img=await loadSrc(p.id);if(!img)return;base=p.frag?await cutFrag(img,p.frag):img}
   if(tok!==p.tok)return;
+  if(p.kind!=="text"&&p.cuts&&p.cuts.length){const w=base.naturalWidth||base.width,h=base.naturalHeight||base.height,c=mkCanvas(w,h),g=c.getContext("2d");
+    g.drawImage(base,0,0,w,h);g.globalCompositeOperation="destination-out";g.fillStyle="#000";
+    for(const cut of p.cuts){g.beginPath();cut.forEach(([u,v],i)=>i?g.lineTo(u*w,v*h):g.moveTo(u*w,v*h));g.closePath();g.fill()}base=c}
   const bw=base.naturalWidth||base.width,bh=base.naturalHeight||base.height;
   if(p.kind==="text")p.w=bw/(1000*TRES);
   p.nw=bw;p.nh=bh;
   let out=base;for(const f of p.fx)if(f.on!==false&&FX[f.t])out=pass(out,f,p.id+(p.frag?JSON.stringify(p.frag.sx):""));
   p.fw=out.width||out.naturalWidth;p.fh=out.height||out.naturalHeight;
   const im=p.el.querySelector("img");
-  if(out===base&&p.kind!=="text"&&!p.frag){p.canvas=null;im.src=SRC("s/"+p.id+".webp")}
+  if(out===base&&p.kind!=="text"&&!p.frag&&!(p.cuts&&p.cuts.length)){p.canvas=null;im.src=SRC("s/"+p.id+".webp")}
   else{p.canvas=out;out.toBlob(b=>{if(tok!==p.tok||!b)return;if(im.dataset.blob)URL.revokeObjectURL(im.dataset.blob);const u=URL.createObjectURL(b);im.dataset.blob=u;im.src=u},"image/png")}
   renderPiece(p);
 }
@@ -910,7 +913,7 @@ $("#rail-text").onclick=addText;
 const gbox=document.createElement("div");gbox.className="gbox";gbox.hidden=true;
 gbox.innerHTML=`<span class="gtag" id="gtag"></span><span class="handle" aria-hidden="true"></span>`;sheet.appendChild(gbox);
 function selectPiece(p,fromSheet){if(p.g!==enteredG)enteredG=null;select(p,p.g&&!enteredG?"group":"single",fromSheet)}
-function select(p,m="single",fromSheet){
+function select(p,m="single",fromSheet){if(!p&&knifeOn)setKnife(false);
   pieces.forEach(x=>x.el.classList.remove("sel"));
   sel=p;selMode=p?m:"single";if(!p)enteredG=null;
   if(p&&selMode==="single")p.el.classList.add("sel");
@@ -985,6 +988,36 @@ function act(a){
   updateGbox();save();
 }
 document.querySelectorAll("#rail [data-a]").forEach(b=>b.onclick=()=>act(b.dataset.a));
+// ---------- cutter: draw round a bit of the selected piece and it comes off, like a craft knife ----------
+let knifeOn=false,knifeSvg=null;
+function setKnife(on){
+  knifeOn=!!on&&!!sel;studio.classList.toggle("cutting",knifeOn);$("#rail-knife").setAttribute("aria-pressed",knifeOn);
+  if(knifeOn&&!knifeSvg){knifeSvg=document.createElementNS("http://www.w3.org/2000/svg","svg");knifeSvg.id="knife";knifeSvg.innerHTML='<path fill="rgba(244,240,230,.12)" stroke="#f4f0e6" stroke-width="2" stroke-dasharray="7 6" stroke-linejoin="round"/>';studio.appendChild(knifeSvg);bindKnife()}
+  if(knifeOn)toast(mobile()?"Draw round the bit to cut off.":"Draw round the bit to cut off. Esc to put the knife down.");
+}
+function toPiece(p,X,Y){
+  const R=sheet.getBoundingClientRect(),W=sheet.clientWidth,H=sheet.clientHeight,k=R.width/W;
+  const n=natural(p),nw=p.nw||n.w,nh=p.nh||n.h,fw=p.fw||nw,fh=p.fh||nh,dw=p.w*W*(fw/nw),dh=dw*fh/fw;
+  const dx=(X-R.left)/k-p.x*W,dy=(Y-R.top)/k-p.y*H,a=-p.r*Math.PI/180;
+  let x=dx*Math.cos(a)-dy*Math.sin(a),y=dx*Math.sin(a)+dy*Math.cos(a);if(p.flip)x=-x;
+  const lx=x/dw+.5,ly=y/dh+.5;return [(lx*fw-(fw-nw)/2)/nw,(ly*fh-(fh-nh)/2)/nh];
+}
+function bindKnife(){
+  const path=knifeSvg.querySelector("path");let pts=null,id=null;
+  knifeSvg.addEventListener("pointerdown",e=>{if(!knifeOn)return;e.preventDefault();e.stopPropagation();id=e.pointerId;knifeSvg.setPointerCapture(id);pts=[[e.clientX,e.clientY]];path.setAttribute("d","")});
+  knifeSvg.addEventListener("pointermove",e=>{if(e.pointerId!==id||!pts)return;const l=pts[pts.length-1];if(Math.hypot(e.clientX-l[0],e.clientY-l[1])<3)return;pts.push([e.clientX,e.clientY]);path.setAttribute("d","M"+pts.map(q=>q.join(" ")).join("L")+"Z")});
+  const end=e=>{if(e.pointerId!==id||!pts)return;id=null;const P=pts;pts=null;path.setAttribute("d","");
+    if(P.length<6){setKnife(false);return}
+    let done=0;for(const t of targets()){if(t.kind==="text"||t.lock)continue;const poly=P.map(([X,Y])=>toPiece(t,X,Y));
+      if(!poly.some(([u,v])=>u>-.05&&u<1.05&&v>-.05&&v<1.05))continue;
+      t.cuts=[...(t.cuts||[]),poly.map(([u,v])=>[+u.toFixed(4),+v.toFixed(4)])];refresh(t);done++}
+    if(done){save();toast("Cut. Undo if it went wrong.")}else toast("Draw over the piece you picked.");};
+  knifeSvg.addEventListener("pointerup",end);knifeSvg.addEventListener("pointercancel",()=>{pts=null;id=null;path.setAttribute("d","")});
+}
+$("#rail-knife").onclick=()=>setKnife(!knifeOn);
+document.addEventListener("keydown",e=>{if(!studio||mode!=="pega")return;const tg=e.target;if(tg&&(tg.tagName==="INPUT"||tg.tagName==="TEXTAREA"||tg.isContentEditable))return;
+  if(e.key==="Escape"&&knifeOn){setKnife(false);e.stopPropagation()}
+  else if((e.key==="k"||e.key==="K")&&!e.metaKey&&!e.ctrlKey&&sel)setKnife(!knifeOn)},true);
 function ungroup(){if(!sel||!sel.g)return;members(sel.g).forEach(m=>delete m.g);enteredG=null;select(sel,"single");save()}
 
 function bindPiece(p){
