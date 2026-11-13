@@ -1248,6 +1248,12 @@ ul.menu{background:rgba(16,34,40,.97)!important;-webkit-backdrop-filter:blur(22p
 
 /* glue it: Back and title sit top-left, exactly where the add-scraps steps put them */
 @media (min-width:721px){.fin-l{align-self:start!important;padding-top:72px!important;margin-left:calc(64px - clamp(32px,5vw,96px))}.fin-l .fin-back{margin-bottom:42px}}
+
+.cutrow .segs button{min-width:0}
+.fword{display:flex;align-items:center;gap:10px;margin-top:8px;padding:0 4px 0 12px;height:42px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--glass-line)}
+.fword span{font-size:12px;color:var(--mat-ink);white-space:nowrap}
+.fword input{flex:1;min-width:0;background:none;border:0;color:#f8f4ea;font:500 16px/1 "Abril Fatface",var(--f-num),serif;letter-spacing:.12em;text-transform:uppercase;outline:none;padding:0 8px}
+.fword:focus-within{border-color:rgba(244,240,230,.5)}
 [hidden]{display:none!important}
 </style>
 <script src="js/vercel-queues.js"></script>

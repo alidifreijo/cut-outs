@@ -632,31 +632,37 @@ async function cutFrag(img,f){
   return c;
 }
 
-let fragStyle="shapes",fragN=5;
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="frag-word"){fragWord=e.target.value;store.set("cutouts-fragword",fragWord)}});
+document.addEventListener("keydown",e=>{if(e.target&&e.target.id==="frag-word"){e.stopPropagation();if(e.key==="Enter"&&sel){e.preventDefault();fragment(sel)}}},true);
+let fragStyle="shapes",fragN=5,fragWord=(store.get("cutouts-fragword")||"CUT");
+const fragLetters=()=>[...(fragWord||"").toUpperCase()].filter(c=>/[\p{L}\p{N}&?!]/u.test(c)).slice(0,10);
 function fragment(p){
   if(!p||p.kind!=="img"||p.frag||p.g)return;
   const n=natural(p),aspect=n.h/n.w,N=fragN,r=rng(Date.now()),shapes=[];
-  if(fragStyle==="strips"){
-    const vert=n.w>=n.h,cuts=[0];for(let i=1;i<N;i++)cuts.push(i/N+(r()-.5)*.5/N);cuts.push(1);
+  if(fragStyle==="strips"||fragStyle==="rows"){
+    const vert=fragStyle==="strips",cuts=[0];for(let i=1;i<N;i++)cuts.push(i/N+(r()-.5)*.5/N);cuts.push(1);
     for(let i=0;i<N;i++){const a=cuts[i],b=cuts[i+1];shapes.push(vert?{sx:a,sy:0,sw:b-a,sh:1,shape:{t:"rect"}}:{sx:0,sy:a,sw:1,sh:b-a,shape:{t:"rect"}})}
   }else{
-    const cols=Math.max(1,Math.round(Math.sqrt(N/aspect))),rows=Math.ceil(N/cols),letters="CUTMESSAORLY";
-    for(let i=0;i<N;i++){
+    const word=fragStyle==="letters"?(fragLetters().length?fragLetters():["C","U","T"]):null,M=word?word.length:N;
+    const cols=word?(M<=5||aspect<.8?M:Math.ceil(M/2)):Math.max(1,Math.round(Math.sqrt(N/aspect))),rows=Math.ceil(M/cols);
+    for(let i=0;i<M;i++){
       const cx=((i%cols)+.5+(r()-.5)*.45)/cols,cy=(Math.floor(i/cols)+.5+(r()-.5)*.45)/rows;
       const t=fragStyle==="letters"?"glyph":["arch","circle","arch","rect"][Math.floor(r()*4)];
       let sw=Math.min(1,(1/cols)*(1.15+r()*.45)),sh;
+      if(word){sw=.94/cols;sh=Math.min(.96/rows,sw/aspect*1.35);const gx=(i%cols+.5)/cols,gy=(Math.floor(i/cols)+.5)/rows;
+        shapes.push({sx:gx-sw/2,sy:Math.max(0,Math.min(1-sh,gy-sh/2)),sw,sh,shape:{t:"glyph",ch:word[i],font:"Abril Fatface"}});continue}
       if(t==="circle")sh=Math.min(1,sw/aspect);else if(t==="arch")sh=Math.min(1,sw/aspect*(1.2+r()*.5));else sh=Math.min(1,(1/rows)*(1.1+r()*.4));
       if(t==="circle"&&sh>=1)sw=sh*aspect;
       const sx=Math.max(0,Math.min(1-sw,cx-sw/2)),sy=Math.max(0,Math.min(1-sh,cy-sh/2));
-      shapes.push({sx,sy,sw,sh,shape:t==="glyph"?{t,ch:letters[Math.floor(r()*letters.length)],font:"Abril Fatface"}:{t}});
+      shapes.push({sx,sy,sw,sh,shape:t==="glyph"?{t,ch:word[i],font:"Abril Fatface"}:{t}});
     }
   }
   const W=sheet.clientWidth,H=sheet.clientHeight,dw=p.w*W,dh=dw*aspect,rad=p.r*Math.PI/180;
-  const spread=fragStyle==="strips"?1.08:1.16,jit=fragStyle==="strips"?.008:.016,g="g"+Date.now().toString(36);
+  const strip=fragStyle==="strips"||fragStyle==="rows",spread=strip?1.08:fragStyle==="letters"?1.12:1.16,jit=strip?.008:.016,g="g"+Date.now().toString(36);
   const made=shapes.map((s,i)=>{
     let lx=(s.sx+s.sw/2-.5)*dw*spread,ly=(s.sy+s.sh/2-.5)*dh*spread;if(p.flip)lx=-lx;
     const rx=lx*Math.cos(rad)-ly*Math.sin(rad),ry=lx*Math.sin(rad)+ly*Math.cos(rad);
-    return {kind:"img",id:p.id,g,frag:s,x:p.x+rx/W+(r()-.5)*jit*2,y:p.y+ry/H+(r()-.5)*jit*2,w:p.w*s.sw,r:p.r+(r()-.5)*(fragStyle==="strips"?3:8),
+    return {kind:"img",id:p.id,g,frag:s,x:p.x+rx/W+(r()-.5)*jit*2,y:p.y+ry/H+(r()-.5)*jit*2,w:p.w*s.sw,r:p.r+(r()-.5)*(strip?3:8),
       flip:p.flip,op:i%2?+(.62+r()*.3).toFixed(2):1,blend:p.blend||"normal",fx:p.fx.map(f=>({...f}))};
   });
   const at=pieces.indexOf(p);p.el.remove();pieces.splice(at,1);
@@ -1200,10 +1206,11 @@ function renderEdit(){
   }
   h+=`</div>`;
   if(!isT&&!p.frag&&!p.g){
-    const FI={shapes:'<svg class="i" viewBox="0 0 24 24"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M10 20v-6a2 2 0 0 1 4 0v6"/></svg>',strips:'<svg class="i" viewBox="0 0 24 24"><path d="M5 4v16M10 4v16M15 4v16M20 4v16"/></svg>',letters:'<svg class="i" viewBox="0 0 24 24"><path d="M4 19l4-14 4 14M5.5 14h5"/><path d="M15 19V8h3a2.5 2.5 0 0 1 0 5h-3M15 13h3.5a3 3 0 0 1 0 6H15"/></svg>'};
+    const FI={shapes:'<svg class="i" viewBox="0 0 24 24"><path d="M4 20V11a8 8 0 0 1 16 0v9"/><path d="M10 20v-6a2 2 0 0 1 4 0v6"/></svg>',strips:'<svg class="i" viewBox="0 0 24 24"><path d="M5 4v16M10 4v16M15 4v16M20 4v16"/></svg>',rows:'<svg class="i" viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h16M4 20h16"/></svg>',letters:'<svg class="i" viewBox="0 0 24 24"><path d="M4 19l4-14 4 14M5.5 14h5"/><path d="M15 19V8h3a2.5 2.5 0 0 1 0 5h-3M15 13h3.5a3 3 0 0 1 0 6H15"/></svg>'};
     h+=`<div class="sec"><button class="sec-t sec-tog" data-do="cutsec" aria-expanded="${cutSecOpen}"><span class="st">Cut it into pieces</span><svg class="i"><use href="#i-down"/></svg></button>`+(cutSecOpen?`
-      <div class="row cutrow"><div class="segs">${[["shapes","Arches"],["strips","Strips"],["letters","Letters"]].map(([k,l])=>`<button data-fs="${k}" aria-pressed="${fragStyle===k}" aria-label="${l}" data-tip="${l.toLowerCase()}">${FI[k]}</button>`).join("")}</div>
-      <div class="stepper" aria-label="number of pieces"><button class="mini" data-fn="-1" aria-label="Fewer pieces"><svg class="i"><use href="#i-minus"/></svg></button><output id="o-fn">${fragN}</output><button class="mini" data-fn="1" aria-label="More pieces"><svg class="i"><use href="#i-plus"/></svg></button></div></div>
+      <div class="row cutrow"><div class="segs">${[["shapes","Arches"],["strips","Vertical strips"],["rows","Horizontal strips"],["letters","Letters"]].map(([k,l])=>`<button data-fs="${k}" aria-pressed="${fragStyle===k}" aria-label="${l}" data-tip="${l.toLowerCase()}">${FI[k]}</button>`).join("")}</div>
+      ${fragStyle==="letters"?"":`<div class="stepper" aria-label="number of pieces"><button class="mini" data-fn="-1" aria-label="Fewer pieces"><svg class="i"><use href="#i-minus"/></svg></button><output id="o-fn">${fragN}</output><button class="mini" data-fn="1" aria-label="More pieces"><svg class="i"><use href="#i-plus"/></svg></button></div>`}</div>
+      ${fragStyle==="letters"?`<label class="fword"><span>Which letters</span><input id="frag-word" maxlength="10" autocomplete="off" spellcheck="false" value="${esc(fragWord)}" placeholder="CUT"></label>`:""}
       <button class="btn cutup" data-do="frag"><svg class="i"><use href="#i-scissors"/></svg>Cut it up</button>`:"")+`
     </div>`;
   }
