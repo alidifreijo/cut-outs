@@ -954,12 +954,23 @@ function updateBadge(){const n=sel?sel.fx.length:0;const b=$("#fx-badge");b.hidd
 function centerOf(T){return {x:T.reduce((a,t)=>a+t.x,0)/T.length,y:T.reduce((a,t)=>a+t.y,0)/T.length}}
 const isLocked=()=>targets().some(t=>t.lock);
 function syncLock(){const L=!!sel&&isLocked(),b=$("#rail-lock");if(b){b.setAttribute("aria-pressed",L);b.setAttribute("aria-label",L?"Unlock":"Lock");b.dataset.tip=(L?"unlock":"lock")+" · ⇧⌘L";b.querySelector("use").setAttribute("href",L?"#i-lock":"#i-unlock")}}
+// one step up or down: hop past the next piece that actually overlaps, so every click shows a change
+function stepLayer(T,dir){
+  const box=e=>e.getBoundingClientRect(),hit=(a,b)=>!(a.right<b.left||b.right<a.left||a.bottom<b.top||b.bottom<a.top);
+  const idx=T.map(t=>pieces.indexOf(t)).sort((a,b)=>a-b),lo=idx[0],hi=idx[idx.length-1],tb=T.map(t=>box(t.el));
+  const over=q=>tb.some(b=>hit(b,box(q.el)));
+  let j=-1;
+  if(dir>0){for(let k=hi+1;k<pieces.length;k++)if(!T.includes(pieces[k])&&over(pieces[k])){j=k;break}if(j<0&&hi<pieces.length-1)j=hi+1}
+  else{for(let k=lo-1;k>=0;k--)if(!T.includes(pieces[k])&&over(pieces[k])){j=k;break}if(j<0&&lo>0)j=lo-1}
+  if(j<0){toast(dir>0?"Already on top.":"Already at the bottom.");return}
+  const other=pieces[j],rest=pieces.filter(q=>!T.includes(q)),ordered=pieces.filter(q=>T.includes(q)),at=rest.indexOf(other)+(dir>0?1:0);
+  rest.splice(at,0,...ordered);pieces=rest;pieces.forEach(q=>sheet.insertBefore(q.el,gbox));
+}
 function act(a){
   if(!sel)return;const T=targets();
   if(a==="lock"){const on=!isLocked();T.forEach(t=>{if(on)t.lock=true;else delete t.lock;t.el.classList.toggle("locked",on)});syncLock();updateTbox();save();if(pane==="fx")renderEdit();toast(on?"Locked. It stays put.":"Unlocked.");return}
   if(isLocked()&&(a==="rot"||a==="flip"))return;
-  if(a==="up")T.forEach(t=>{pieces.splice(pieces.indexOf(t),1);pieces.push(t);sheet.insertBefore(t.el,gbox)});
-  if(a==="down")[...T].reverse().forEach(t=>{pieces.splice(pieces.indexOf(t),1);pieces.unshift(t);sheet.insertBefore(t.el,sheet.querySelector(".piece"))});
+  if(a==="up"||a==="down")stepLayer(T,a==="up"?1:-1);
   if(a==="dup"){
     const ng=selMode==="group"?"g"+Date.now().toString(36):undefined;let first=null;
     T.forEach(t=>{const {el,canvas,tok,nw,nh,fw,fh,...d}=t;const c=addPiece(JSON.parse(JSON.stringify({...d,g:ng??(selMode==="single"?undefined:d.g),x:d.x+.04,y:d.y+.04})),true);c.el.classList.add("settle");first=first||c});
@@ -979,6 +990,9 @@ function ungroup(){if(!sel||!sel.g)return;members(sel.g).forEach(m=>delete m.g);
 function bindPiece(p){
   let m=null,sx,sy,id,c0,a0,d0,w0,r0,start=null;
   p.el.addEventListener("pointerdown",e=>{
+    if(p.lock&&!e.__fwd){const under=[...new Set(document.elementsFromPoint(e.clientX,e.clientY).map(x=>x.closest&&x.closest(".piece")).filter(Boolean))]
+        .map(el=>pieces.find(q=>q.el===el)).find(q=>q&&q!==p&&!q.lock);
+      if(under){e.stopPropagation();const f=new PointerEvent("pointerdown",e);f.__fwd=1;under.el.dispatchEvent(f);return}}
     e.stopPropagation();openPop(null);closeMenus();
     if(!(sel&&targets().includes(p)))selectPiece(p,true);
     id=e.pointerId;p.el.setPointerCapture(id);
