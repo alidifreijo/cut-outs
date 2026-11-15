@@ -1158,11 +1158,12 @@ function updateTbox(){
   tbox.addEventListener("pointerdown",e=>{
     const h=e.target.closest(".th"),r=e.target.closest(".tr");
     if(!h&&!r){ // a click inside the box picks whatever piece is on top under the pointer, like figma
-      const hit=document.elementsFromPoint(e.clientX,e.clientY).map(el=>el.closest&&el.closest(".piece")).find(Boolean);
-      const hp=hit&&pieces.find(x=>x.el===hit);
+      // locked pieces are see-through to the pointer: pick the top unlocked one (the current pick wins if it's under the pointer)
+      const under=[...new Set(document.elementsFromPoint(e.clientX,e.clientY).map(el=>el.closest&&el.closest(".piece")).filter(Boolean))].map(el=>pieces.find(x=>x.el===el)).filter(Boolean);
+      const free=under.filter(x=>!x.lock),hp=free.find(x=>targets().includes(x))||free[0]||under[0];
       if(hp&&!targets().includes(hp)){selectPiece(hp,true);updateTbox()}
     }
-    if(h)begin(e,"scale");else if(r)begin(e,"rotate");else begin(e,"move");
+    if(isLocked())return;if(h)begin(e,"scale");else if(r)begin(e,"rotate");else begin(e,"move");
   });
   tbox.addEventListener("pointermove",e=>{
     if(!st||e.pointerId!==st.id)return;const {W,H,g}=st;
