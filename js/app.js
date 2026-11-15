@@ -802,7 +802,7 @@ function placeRail(){
 }
 function applyView(){clampPan();canvasEl.style.transform=`translate(-50%,-50%) translate(${panX}px,${panY}px) scale(${zoom})`;placeRail();$("#z-val").textContent=Math.round(zoom*100)+"%";gboxSoon()}
 function zoomAt(nz,cx,cy){
-  nz=Math.max(.5,Math.min(5,nz));
+  nz=Math.max(.5,Math.min(8,nz));
   const sr=studio.getBoundingClientRect(),r=region(),C={x:sr.left+r.cx,y:sr.top+r.cy};
   const ux=(cx-C.x-panX)/zoom,uy=(cy-C.y-panY)/zoom;
   panX=cx-C.x-ux*nz;panY=cy-C.y-uy*nz;zoom=nz;applyView();
@@ -810,12 +810,23 @@ function zoomAt(nz,cx,cy){
 function zoomBy(f){const sr=studio.getBoundingClientRect(),r=region();zoomAt(zoom*f,sr.left+r.cx,sr.top+r.cy)}
 function fitZoom(){zoom=1;panX=0;panY=0;applyView()}
 $("#z-in").onclick=()=>zoomBy(1.25);$("#z-out").onclick=()=>zoomBy(1/1.25);$("#z-fit").onclick=fitZoom;$("#z-val").onclick=fitZoom;
-desk.addEventListener("wheel",e=>{
-  if(!e.ctrlKey&&!e.metaKey&&!(zoom>1.001&&Math.abs(e.deltaX)>Math.abs(e.deltaY))){e.preventDefault();zoomAt(zoom*Math.exp(-e.deltaY*.0015),e.clientX,e.clientY);return}
+// trackpad: pinch zooms the sheet only (never the page), two fingers move around it; a mouse wheel zooms
+const isMouseWheel=e=>e.deltaMode===1||(e.deltaX===0&&Math.abs(e.deltaY)>=50&&Number.isInteger(e.deltaY));
+studio.addEventListener("wheel",e=>{
+  if(mode!=="pega")return;
+  if(e.target.closest(".dock,.rail,.mbar,.zoom,.top,#btn-pin,.menu,.fin,#pop-paper"))return;
   e.preventDefault();
-  if(e.ctrlKey||e.metaKey)zoomAt(zoom*Math.exp(-e.deltaY*.01),e.clientX,e.clientY);
-  else if(zoom>1.001){panX-=e.deltaX;panY-=e.deltaY;applyView()}
+  if(e.ctrlKey||e.metaKey){zoomAt(zoom*Math.exp(-e.deltaY*.012),e.clientX,e.clientY);return}
+  if(isMouseWheel(e)){zoomAt(zoom*Math.exp(-e.deltaY*.0015),e.clientX,e.clientY);return}
+  if(zoom>1.001){panX-=e.deltaX;panY-=e.deltaY;applyView()}
 },{passive:false});
+// Safari sends pinches as gesture events
+{let z0=1;
+  studio.addEventListener("gesturestart",e=>{if(mode!=="pega")return;e.preventDefault();z0=zoom});
+  studio.addEventListener("gesturechange",e=>{if(mode!=="pega")return;e.preventDefault();zoomAt(z0*e.scale,e.clientX||innerWidth/2,e.clientY||innerHeight/2)});
+  studio.addEventListener("gestureend",e=>{if(mode==="pega")e.preventDefault()});}
+// a pinch anywhere in the studio never zooms the whole page
+document.addEventListener("wheel",e=>{if(mode==="pega"&&(e.ctrlKey||e.metaKey))e.preventDefault()},{passive:false});
 const ptrs=new Map();let panStart=null,pinch0=null,moved=false;
 desk.addEventListener("pointerdown",e=>{
   if(e.target.closest(".piece,.gbox .handle,.tbox"))return;
