@@ -1260,6 +1260,11 @@ ul.menu{background:rgba(16,34,40,.97)!important;-webkit-backdrop-filter:blur(22p
 #studio.cutting #knife{display:block}
 #studio.cutting .rail,#studio.cutting .dock,#studio.cutting .mbar,#studio.cutting .zoom,#studio.cutting .top,#studio.cutting #btn-pin{z-index:40}
 #rail-knife[aria-pressed=true]{background:#f4f0e6;color:#1d3a3f}
+
+/* the table: the lamp shadow is the svg that slides with the board, not a painted band fixed to the screen */
+#mesa.mat{background-image:radial-gradient(ellipse 70% 60% at 62% 70%,rgba(214,232,186,.26),rgba(214,232,186,0) 70%),linear-gradient(var(--mat-line-strong) 1px,transparent 1px),linear-gradient(90deg,var(--mat-line-strong) 1px,transparent 1px),linear-gradient(90deg,var(--mat-line) 1px,transparent 1px)!important}
+#mesa.mat::before{background:radial-gradient(ellipse 70% 60% at 62% 70%,rgba(214,232,186,.26),rgba(214,232,186,0) 70%)!important}
+#mesa .lamp{display:block}
 [hidden]{display:none!important}
 </style>
 <script src="js/vercel-queues.js"></script>
