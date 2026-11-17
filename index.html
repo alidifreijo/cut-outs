@@ -1262,7 +1262,7 @@ ul.menu{background:rgba(16,34,40,.97)!important;-webkit-backdrop-filter:blur(22p
 #rail-knife[aria-pressed=true]{background:#f4f0e6;color:#1d3a3f}
 
 /* the table: the lamp shadow is the svg that slides with the board, not a painted band fixed to the screen */
-#mesa.mat{background-image:radial-gradient(ellipse 70% 60% at 62% 70%,rgba(214,232,186,.26),rgba(214,232,186,0) 70%),linear-gradient(var(--mat-line-strong) 1px,transparent 1px),linear-gradient(90deg,var(--mat-line-strong) 1px,transparent 1px),linear-gradient(90deg,var(--mat-line) 1px,transparent 1px)!important}
+#mesa.mat{background-image:linear-gradient(var(--mat-line-strong) 1px,transparent 1px),linear-gradient(90deg,var(--mat-line-strong) 1px,transparent 1px),linear-gradient(var(--mat-line) 1px,transparent 1px),linear-gradient(90deg,var(--mat-line) 1px,transparent 1px)!important;background-size:calc(var(--cm)*5) calc(var(--cm)*5),calc(var(--cm)*5) calc(var(--cm)*5),var(--cm) var(--cm),var(--cm) var(--cm)!important}
 #mesa.mat::before{background:radial-gradient(ellipse 70% 60% at 62% 70%,rgba(214,232,186,.26),rgba(214,232,186,0) 70%)!important}
 #mesa .lamp{display:block}
 [hidden]{display:none!important}
